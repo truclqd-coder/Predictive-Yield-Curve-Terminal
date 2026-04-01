@@ -21,4 +21,4 @@ The model solves for:
 Where $\epsilon$ represents the market dislocation (Rich/Cheap signal).
 
 --
-Developed by Truc Nguyen, Product Support Specialist, AI Knowledge Lead at Moody's Analytics, Inc.
+**Developed by Truc Nguyen, Product Support Specialist, AI Knowledge Lead at Moody's Analytics, Inc.**
