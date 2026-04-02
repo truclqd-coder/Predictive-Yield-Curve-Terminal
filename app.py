@@ -36,7 +36,7 @@ try:
     model = LinearRegression().fit(X, y)
 
     # --- 3. BRANDED HEADER & INSTRUMENT STATUS ---
-    st.title("QuantYield: Predictive Yield Curve Engine <EXEC>")
+    st.title("QuantYield: Predictive Yield Curve Terminal <EXEC>")
     
     st.markdown("""
         <p style='font-family: "Roboto Mono", monospace; color: #58a6ff; font-size: 14px; margin-top: 5px; line-height: 1.6;'>
