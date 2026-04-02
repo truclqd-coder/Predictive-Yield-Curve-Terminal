@@ -22,6 +22,7 @@ st.markdown("""
 # --- 2. DATA ENGINE ---
 @st.cache_data
 def load_data():
+    # 3-Month (^IRX), 10-Year (^TNX), 30-Year (^TYX)
     tickers = {"^IRX": "3M", "^TNX": "10Y", "^TYX": "30Y"}
     df = yf.download(list(tickers.keys()), period="5y", interval="1d")['Close'].rename(columns=tickers).dropna()
     return df
@@ -30,11 +31,11 @@ try:
     df = load_data()
     X = df[['3M', '30Y']]
     y = df['10Y']
-    # The Core AI Instrument
+    # The Core AI Instrument: Ordinary Least Squares
     model = LinearRegression().fit(X, y)
 
     # --- 3. BRANDED HEADER & INSTRUMENT STATUS ---
-    st.title("QuantYield: Predictive Yield Curve Engine <EXEC>")
+    st.title("QuantYield: Predictive Yield Curve Terminal <EXEC>")
     
     st.markdown("""
         <p style='font-family: "Roboto Mono", monospace; color: #58a6ff; font-size: 14px; margin-top: 5px; line-height: 1.6;'>
@@ -49,10 +50,10 @@ try:
     curr_3m, curr_10y, curr_30y = df['3M'].iloc[-1], df['10Y'].iloc[-1], df['30Y'].iloc[-1]
     fair_val = model.predict([[curr_3m, curr_30y]])[0]
 
-    c1.metric("MKT: 10Y", f"{curr_10y:.3f}%", help="Current Market Yield")
-    c2.metric("SYS: FAIR_VAL", f"{fair_val:.3f}%", delta=f"{fair_val - curr_10y:.3f}%", help="Model Fair Value")
-    c3.metric("MOD: R-SQUARED", f"{model.score(X, y):.4f}", help="Statistical Confidence")
-    c4.metric("SPR: 30Y-3M", f"{(curr_30y - curr_3m)*100:.1f} bps", help="Curve Slope")
+    c1.metric("MKT: 10Y", f"{curr_10y:.3f}%")
+    c2.metric("SYS: FAIR_VAL", f"{fair_val:.3f}%", delta=f"{fair_val - curr_10y:.3f}%")
+    c3.metric("MOD: R-SQUARED", f"{model.score(X, y):.4f}")
+    c4.metric("SPR: 30Y-3M", f"{(curr_30y - curr_3m)*100:.1f} bps")
 
     st.markdown("---")
 
@@ -78,6 +79,7 @@ try:
         st.table(matrix_df.style.format("{:.2f}")
                  .background_gradient(cmap='magma', axis=None)
                  .set_properties(**{'color': 'white', 'font-family': 'monospace'}))
+        st.caption("Matrix units: Predicted 10Y Yield (%)")
 
     # --- 6. SIDEBAR: INSTRUMENT CALIBRATION ---
     st.sidebar.markdown("### <SYS> AI_CALIBRATION")
@@ -88,18 +90,28 @@ try:
         </p>
         """, unsafe_allow_html=True)
     
+    # USER CALIBRATION GUIDE
+    st.sidebar.info("""
+        **CALIBRATION GUIDE:**
+        1. **Short-Rate:** Adjust for expected Federal Reserve policy shifts.
+        2. **Long-Bond:** Adjust for changes in inflation or growth outlook.
+        3. **Synthesis:** The AI recalculates the 10Y Fair Value based on these new priors.
+    """)
+    
     st.sidebar.divider()
     
+    # Input Sliders
     s_shock = st.sidebar.slider("SHORT_RATE_SHOCK (BPS)", -200, 200, 0) / 100
     l_shock = st.sidebar.slider("LONG_BOND_SHOCK (BPS)", -200, 200, 0) / 100
     
+    # Instrument Prediction Calculation
     new_pred = model.predict([[curr_3m + s_shock, curr_30y + l_shock]])[0]
     st.sidebar.divider()
     
     st.sidebar.metric("POSTERIOR PREDICTION", f"{new_pred:.3f}%")
     st.sidebar.write(f"Implied Delta: {(new_pred - curr_10y)*100:.1f} bps")
     
-    st.sidebar.info("The prediction above represents the synthesis of historical priors and current calibration.")
+    st.sidebar.info("Prediction generated via OLS_REGRESSION_V1 synthesis of historical priors and calibrated shocks.")
 
     st.markdown("`STATUS: SYSTEM_READY | OLS_REGRESSION_V1_ENABLED | SESSION_ACTIVE`")
 
