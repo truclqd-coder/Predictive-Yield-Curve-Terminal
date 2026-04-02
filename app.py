@@ -125,7 +125,14 @@ try:
         help="The synthesized yield expectation. This combines 5 years of historical evidence (Priors) with your custom macro adjustments (Evidence)."
     )
     
-    st.sidebar.write(f"Implied Delta: {(new_pred - curr_10y)*100:.1f} bps")
+   # NEW: IMPLIED DELTA WITH HELP PARAMETER
+    delta_bps = (new_pred - curr_10y) * 100
+    st.sidebar.metric(
+        label="IMPLIED DELTA",
+        value=f"{delta_bps:.1f} bps",
+        help="The spread between the Current Market 10Y and your Calibrated Prediction. Represents the total basis point move required to reach your target."
+    )
+    
     st.sidebar.info("Prediction generated via OLS_REGRESSION_V1 synthesis.")
 
     st.markdown("`STATUS: SYSTEM_READY | OLS_REGRESSION_V1_ENABLED | SESSION_ACTIVE`")
