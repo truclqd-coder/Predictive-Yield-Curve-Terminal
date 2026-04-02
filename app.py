@@ -40,7 +40,15 @@ try:
     model = LinearRegression().fit(X, y)
 
     # --- 3. TERMINAL HEADER & CALCULATIONS ---
-    st.title("SYS: QRV_YIELD_PREDICTOR <EXEC>")
+    st.title("QuantYield: Predictive Yield Curve Engine <EXEC>")
+
+# "System Specs" line to show the AI model and data window
+st.markdown("""
+    <p style='font-family: "Roboto Mono", monospace; color: #58a6ff; font-size: 14px; margin-top: -20px;'>
+        ENGINE: OLS_REGRESSION_V1 | KERNEL: SCIKIT-LEARN | LOOKBACK: 5Y_HISTORICAL
+    </p>
+    """, unsafe_allow_html=True)
+st.markdown("---")
     
     curr_3m, curr_10y, curr_30y = df['SHORT_RATE'].iloc[-1], df['10Y_YIELD'].iloc[-1], df['30Y_BOND'].iloc[-1]
     fair_val_now = model.predict([[curr_3m, curr_30y]])[0]
