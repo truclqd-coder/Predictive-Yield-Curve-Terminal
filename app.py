@@ -120,7 +120,7 @@ try:
     
     # ENHANCED POSTERIOR HELP
     st.sidebar.metric(
-        label="POSTERIOR PREDICTION", 
+        label="POSTERIOR 10Y YIELD PREDICTION", 
         value=f"{new_pred:.3f}%",
         help="The synthesized yield expectation. This combines 5 years of historical evidence (Priors) with your custom macro adjustments (Evidence)."
     )
