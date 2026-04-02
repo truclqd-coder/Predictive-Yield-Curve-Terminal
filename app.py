@@ -36,6 +36,16 @@ st.markdown("""
         background-color: #161b22; 
         border-right: 1px solid #30363d; 
     }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { 
+        height: 50px; 
+        background-color: #0d1117; 
+        border-radius: 4px 4px 0px 0px; 
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #161b22; 
+        border-bottom: 2px solid #58a6ff !important; 
+    }
     .stTable { 
         border: 1px solid #30363d; 
     }
@@ -49,7 +59,7 @@ def load_market_data():
     tickers = {"^IRX": "SHORT_RATE", "^TNX": "10Y_YIELD", "^TYX": "30Y_BOND"}
     raw = yf.download(list(tickers.keys()), period="5y", interval="1d")
     
-    # Flatten MultiIndex and drop NaNs for model stability
+    # Handle MultiIndex and drop NaNs for model stability
     if isinstance(raw.columns, pd.MultiIndex):
         df = raw['Close'].rename(columns=tickers).dropna()
     else:
@@ -60,7 +70,7 @@ try:
     df = load_market_data()
     
     # --- 3. PREDICTIVE AI MODEL (OLS) ---
-    # We model the 10Y "Belly" as a function of the 3M and 30Y "Wings"
+    # Target: 10Y "Belly" | Features: 3M and 30Y "Wings"
     X = df[['SHORT_RATE', '30Y_BOND']]
     y = df['10Y_YIELD']
     model = LinearRegression().fit(X, y)
@@ -68,35 +78,18 @@ try:
     # --- 4. TERMINAL HEADER ---
     st.title("SYS: QRV_YIELD_PREDICTOR <EXEC>")
     
-    # --- 5. REAL-TIME MARKET METRICS ---
-    c1, c2, c3, c4 = st.columns(4)
-    
+    # Current Market Snapshot
     curr_3m = df['SHORT_RATE'].iloc[-1]
     curr_10y = df['10Y_YIELD'].iloc[-1]
     curr_30y = df['30Y_BOND'].iloc[-1]
-    
-    # Model's current Fair Value estimate
     fair_val_now = model.predict([[curr_3m, curr_30y]])[0]
-    
-    c1.metric("MKT: 10Y", f"{curr_10y:.3f}%")
-    c2.metric("SYS: FAIR_VAL", f"{fair_val_now:.3f}%", delta=f"{fair_val_now - curr_10y:.3f}%")
-    c3.metric("MOD: R-SQUARED", f"{model.score(X, y):.4f}")
-    c4.metric("SPR: 30Y-3M", f"{(curr_30y - curr_3m)*100:.1f} bps")
 
-    st.markdown("---")
-
-    # --- 6. INTERACTIVE HISTORICAL ANALYSIS ---
-    st.subheader("<HIST> TIME_SERIES_ANALYSIS")
-    st.line_chart(df[['SHORT_RATE', '10Y_YIELD', '30Y_BOND']], height=350)
-
-    # --- 7. SIDEBAR: SCENARIO ANALYSIS (WHAT-IF) ---
+    # --- 5. SIDEBAR: SCENARIO ANALYSIS (WHAT-IF) ---
     st.sidebar.markdown("### <CMD> INPUT_SHOCKS")
-    
-    # Users adjust economic assumptions here
     s_shock = st.sidebar.slider("FED_POLICY_SHOCK (BPS)", -200, 200, 0) / 100
     l_shock = st.sidebar.slider("INF_GROWTH_SHOCK (BPS)", -200, 200, 0) / 100
 
-    # Predicted yield based on shocks
+    # Predicted yield based on user-defined shocks
     simulated_x = np.array([[curr_3m + s_shock, curr_30y + l_shock]])
     scenario_prediction = model.predict(simulated_x)[0]
     
@@ -104,26 +97,60 @@ try:
     st.sidebar.metric("SCENARIO PREDICTION", f"{scenario_prediction:.3f}%")
     st.sidebar.write(f"Implied Δ: {(scenario_prediction - curr_10y)*100:.1f} bps")
 
-    # --- 8. SENSITIVITY MATRIX ---
-    st.subheader("<SENS> PROJECTION_MATRIX")
-    
-    # Create a grid of possible outcomes
-    s_range = np.linspace(curr_3m - 0.5, curr_3m + 0.5, 7)
-    l_range = np.linspace(curr_30y - 0.5, curr_30y + 0.5, 7)
-    
-    grid = [[model.predict([[s, l]])[0] for l in l_range] for s in s_range]
-    matrix_df = pd.DataFrame(
-        grid, 
-        index=[f"3M: {s:.2f}" for s in s_range], 
-        columns=[f"30Y: {l:.2f}" for l in l_range]
-    )
-    
-    # Display matrix with a "Magma" heatmap for risk visualization
-    st.table(matrix_df.style.format("{:.3f}")
-             .background_gradient(cmap='magma', axis=None)
-             .set_properties(**{'background-color': '#0d1117', 'color': 'white'}))
+    # --- 6. MAIN CONTENT TABS ---
+    tab1, tab2, tab3 = st.tabs(["<MAIN> DASHBOARD", "<SENS> ANALYSIS", "<HELP> GLOSSARY"])
 
-    st.markdown("`STATUS: SYSTEM_READY | DATA_INTEGRITY_VERIFIED`")
+    with tab1:
+        # Metrics Row
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("MKT: 10Y", f"{curr_10y:.3f}%")
+        c2.metric("SYS: FAIR_VAL", f"{fair_val_now:.3f}%", delta=f"{fair_val_now - curr_10y:.3f}%")
+        c3.metric("MOD: R-SQUARED", f"{model.score(X, y):.4f}")
+        c4.metric("SPR: 30Y-3M", f"{(curr_30y - curr_3m)*100:.1f} bps")
+
+        st.subheader("<HIST> TIME_SERIES_ANALYSIS")
+        st.line_chart(df[['SHORT_RATE', '10Y_YIELD', '30Y_BOND']], height=400)
+
+    with tab2:
+        st.subheader("<SENS> PROJECTION_MATRIX")
+        # Generate a grid of possible outcomes for the Projection Matrix
+        s_range = np.linspace(curr_3m - 0.5, curr_3m + 0.5, 7)
+        l_range = np.linspace(curr_30y - 0.5, curr_30y + 0.5, 7)
+        
+        grid = [[model.predict([[s, l]])[0] for l in l_range] for s in s_range]
+        matrix_df = pd.DataFrame(
+            grid, 
+            index=[f"3M:{s:.2f}" for s in s_range], 
+            columns=[f"30Y:{l:.2f}" for l in l_range]
+        )
+        
+        st.table(matrix_df.style.format("{:.3f}")
+                 .background_gradient(cmap='magma', axis=None)
+                 .set_properties(**{'background-color': '#0d1117', 'color': 'white'}))
+        
+        st.info(f"LIVE SCENARIO: At 3M={curr_3m + s_shock:.2f}% and 30Y={curr_30y + l_shock:.2f}%, 10Y Fair Value is {scenario_prediction:.3f}%")
+
+    with tab3:
+        st.subheader("TERMINOLOGY & QUANT METRICS")
+        
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            st.markdown("#### STRATEGIC MNEMONICS")
+            st.write("**<QRV>** : Quant Relative Value. Identifying mispriced bonds by analyzing the internal structure of the yield curve.")
+            st.write("**<EXEC>** : Execute. Triggers the AI engine to process current market data and user shocks.")
+            st.write("**<SENS>** : Sensitivity. A matrix showing the 'Risk Surface' of potential yield outcomes.")
+            st.write("**<HIST>** : Historical. Longitudinal tracking of yields over a 5-year window.")
+            
+        with col_b:
+            st.markdown("#### QUANTITATIVE DEFINITIONS")
+            st.write("**MOD: R-SQUARED** : Confidence metric. Measures how much of the 10Y yield movement is explained by the 3M/30Y 'Wings'.")
+            st.write("**SYS: FAIR_VAL** : The AI's theoretical 'True North.' The yield suggested by 5 years of historical correlation.")
+            st.write("**SPR: 30Y-3M** : The Slope. A measure of economic health. Inversion (negative) often signals recession.")
+            st.write("**IMPLIED Δ** : The difference between current market yield and your custom 'What-If' scenario.")
+
+        st.divider()
+        st.markdown("`STATUS: SYSTEM_READY | DATA_INTEGRITY_VERIFIED | SESSION_ACTIVE`")
 
 except Exception as e:
     st.error(f"SYSTEM_FATAL_ERROR: {e}")
